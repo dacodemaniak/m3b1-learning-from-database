@@ -1,0 +1,44 @@
+.env
+
+# pyenv
+.python-version
+
+# cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.egg-info/
+*.egg
+
+# distribution / packaging
+build/
+dist/
+.eggs/
+parts//
+sdist//
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# virtual environments
+venv/
+ENV/
+env//
+.venv/
+data-vizz
+
+# Specifics MacOS
+.DS_Store
+
+# Production files
+pipeline_report.json
+visualizations
+!visualizations/.gitkeep
+logs
+!logs/.gitkeep
+*.log
+*.bak
