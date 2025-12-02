@@ -88,3 +88,13 @@ class PersonUpdate(BaseModel):
         if isinstance(value, str):
             return value.upper()
         return value
+    
+class TrainingDataResponse(BaseModel):
+    """Schéma Pydantic pour les données spécifiques d'entraînement ML."""
+    estimated_revenue: float
+    mensual_home_rent: Optional[float]
+    credit_amount: float
+
+    class Config:
+        # Permet de mapper les colonnes SQL brutes aux attributs
+        from_attributes = True

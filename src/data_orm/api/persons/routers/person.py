@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, status, Query
 from sqlalchemy.orm import Session
-from data_orm.api.persons.models.models import PersonBase, PersonResponse, PersonUpdate
+from sqlalchemy import text
+from data_orm.api.persons.models.models import PersonBase, PersonResponse, PersonUpdate, TrainingDataResponse
 from data_orm.api.persons.services.person import PersonService
 from data_orm.api.infrastructure.dependencies import get_db
 from typing import List
-
 router = APIRouter(
     prefix="/persons",
     tags=["Persons"], # Utilisé pour le regroupement dans la documentation Swagger
@@ -19,6 +19,40 @@ def find_all_persons(
 ):
     """Récupère la liste de toutes les personnes avec pagination."""
     return PersonService(db).get_all(skip=skip, limit=limit)
+
+@router.get(
+    "/training/datas", 
+    response_model=List[TrainingDataResponse],
+    tags=["ML Export"], # Nouveau tag pour la documentation Swagger
+    summary="Récupère les données brutes optimisées pour l'entraînement ML"
+)
+
+def get_training_data(db: Session = Depends(get_db)):
+    """
+    Exécute une requête SQL brute pour récupérer un jeu de données 
+    complet et spécifique pour l'entraînement d'un modèle.
+    """
+    # ⚠️ NOTE : Vous devez lister ici TOUTES les colonnes que vous voulez retourner.
+    # L'utilisation de guillemets doubles (") pour les noms de colonnes SQL est recommandée
+    # si votre SGBD (ex: PostgreSQL) fait la distinction majuscule/minuscule.
+    
+    # Construction de la requête SQL brute
+    sql_query = """
+    SELECT 
+        estimated_revenue, mensual_home_rent, credit_amount
+    FROM persons;
+    """
+    
+    # Exécution de la requête SQL
+    # La méthode .scalars() est utilisée pour récupérer les objets colonnes directement.
+    # Dans le cas de l'ORM, .execute().all() retourne des objets Row ou des tuples.
+    # On utilise .all() pour récupérer les résultats sous forme de tuples/dictionnaires
+    # qui seront ensuite mappés au modèle Pydantic.
+    result = db.execute(text(sql_query)).all()
+    
+    # FastAPI/Pydantic gère la conversion de la liste des tuples (ou Row objects)
+    # en liste de TrainingDataResponse grâce à response_model.
+    return result
 
 # --- READ ONE (findOne) ---
 @router.get("/{person_id}", response_model=PersonResponse)
@@ -47,3 +81,4 @@ def remove_person(person_id: int, db: Session = Depends(get_db)):
     PersonService(db).delete(person_id)
     # FastAPI retourne automatiquement 204 No Content pour une fonction qui ne retourne rien
     return
+
