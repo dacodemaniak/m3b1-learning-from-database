@@ -13,7 +13,8 @@ dependencies = [
     "python-dotenv>=1.0.0",
     "pandas>=2.0.0",
     "loguru>=0.7.0",
-    "pydantic"
+    "pydantic",
+    "httpx"
 ]
 
 [build-system]

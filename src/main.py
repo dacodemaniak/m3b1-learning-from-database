@@ -4,6 +4,8 @@ from data_orm.config.config import DATABASE_URL
 from data_orm.config.logger import get_logger
 import uvicorn
 from data_orm.api.main import app
+from data_orm.infrastructure.pipeline_orchestrator import PipelineOrchestrator
+
 
 logger = get_logger()
 
@@ -49,6 +51,47 @@ def load_data():
         logger.info("Chargement des personnes...")
         loader.load_persons(csv_path)
         logger.info("Données chargées avec succès!")
+
+def intiate_pipeline():
+    config = {
+        'input_file': 'from_database',
+        'output_file': 'data_source/processed_data.csv',
+        'log_file': 'logs/pipeline.log',
+        'anonymization': {
+            'strategy': 'hash',
+            'explicit_sensitive_columns': ['nom', 'prenom']
+        },
+        'cleaning': {
+            'missing_values_strategy': 'auto',
+            'outlier_removal_method': 'iqr'
+        },
+        'relevance_filter': {
+            'strict_mode': True,
+            'allowed_columns': [
+                'nom',
+                'prenom',
+                'revenu_estime_mois',
+                'loyer_mensuel',
+                'montant_pret'
+            ]
+        },
+        'normalization': {
+            'method': 'minmax'
+        }
+    }
+
+
+    orchestrator = PipelineOrchestrator(config)
+
+    logger.info("🚀 Starting compliant data processing pipeline...")
+    logger.info("📏 Sensitive datas extracted from database")
+
+    processed_data = orchestrator.run_pipeline()
+    
+    print("Pipeline execution completed!")
+    print(f"Processed data shape: {processed_data.shape}")
+
+    print(f"🎯 Final columns: {list(processed_data.columns)}")
 
 if __name__ == "__main__":
     # load_data()
