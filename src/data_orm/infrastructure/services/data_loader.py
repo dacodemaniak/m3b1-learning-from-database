@@ -8,7 +8,7 @@ from data_orm.domain.family_situation import FamilySituation
 from data_orm.domain.study_level import StudyLevel
 # Import des utilitaires
 from data_orm.config.parse_and_convert_utils import convert_bool, parse_date
-
+from data_orm.config.config import COLUMN_MAPPING, EXCLUDE_COLUMNS
 class CSVDataLoader:
     def __init__(self, session: Session):
         self.session = session
@@ -68,46 +68,46 @@ class CSVDataLoader:
         self.load_family_situations(csv_path)
         
         df = pd.read_csv(csv_path)
-        
+        count = 0
+
+        df = df.drop(columns=EXCLUDE_COLUMNS, errors='ignore')
+
         # 2. Itération et insertion des personnes
-        for count, (_, row) in enumerate(df.iterrows()):
+        for _, row in df.iterrows():
             
-            # Gestion des colonnes de référence qui peuvent être NaN (None en Python)
-            # IMPORTANT: La conversion en str() doit être faite sur la valeur non-NaN.
-            study_level_label = str(row['niveau_etude']) if pd.notna(row['niveau_etude']) else None
-            area_label = str(row['region']) if pd.notna(row['region']) else None
-            family_situation_label = str(row['situation_familiale']) if pd.notna(row['situation_familiale']) else None
+            count += 1
             
             # Récupération des IDs (utilisation de .get() avec vérification de la clé)
-            study_level_id = self.study_levels.get(study_level_label) if study_level_label else None
-            area_id = self.areas.get(area_label) if area_label else None
-            family_situation_id = self.family_situations.get(family_situation_label) if family_situation_label else None
+            study_level_id = self.study_levels.get(row['niveau_etude'])
+            area_id = self.areas.get(row['region'])
+            family_situation_id = self.family_situations.get(row['situation_familiale'])
             
-            person = Person(
-                lastname=str(row['nom']),
-                firstname=str(row['prenom']),
-                # Utilisation de .item() pour extraire la valeur nativement, ou vérification des types
-                age=int(row['age']) if pd.notna(row['age']) else None, # Assurez-vous que le modèle accepte None
-                height=float(row['taille']) if pd.notna(row['taille']) else None,
-                weight=float(row['poids']) if pd.notna(row['poids']) else None,
-                gender=str(row['sexe']),
-                # Utilisation des fonctions utilitaires importées
-                sport_licence=convert_bool(row['sport_licence']),
-                smoker=convert_bool(row['smoker']),
-                french_nationality=convert_bool(row['nationalité_francaise']),
-                estimated_revenue=float(row['revenu_estime_mois']) if pd.notna(row['revenu_estime_mois']) else None,
-                credit_history=float(row['historique_credits']) if pd.notna(row['historique_credits']) else None,
-                personal_risk=float(row['risque_personnel']) if pd.notna(row['risque_personnel']) else None,
-                account_creation_date=parse_date(row['date_creation_compte']),
-                credit_score=float(row['score_credit']) if pd.notna(row['score_credit']) else None,
-                mensual_home_rent=float(row['loyer_mensuel']) if pd.notna(row['loyer_mensuel']) else None,
-                credit_amount=float(row['montant_pret']) if pd.notna(row['montant_pret']) else None,
-                
-                # Assignation des IDs récupérés
-                study_level_id=study_level_id,
-                area_id=area_id,
-                family_situation_id=family_situation_id
-            )
+            # Build Person object according mapping and exclusion
+            person_data = {}
+
+            for csv_col, orm_attr in COLUMN_MAPPING.items():
+                if csv_col in row and orm_attr not in ['child_number', 'caf_quotient']:
+                    value = row[csv_col]
+
+                    if orm_attr in ['sport_licence', 'smoker', 'french_nationality']:
+                        person_data[orm_attr] = convert_bool(value)
+                    elif orm_attr == 'account_creation_date':
+                        person_data[orm_attr] = parse_date(value)
+                    elif orm_attr == 'gender':
+                        person_data[orm_attr] = str(value)
+                    else:
+                        person_data[orm_attr] = float(value) if pd.notna(value) else None
+
+                # Special for two new cols
+                person_data['child_number'] = int(row['nb_enfant']) if pd.notna(row['nb_enfant']) else None
+                person_data['caf_quotient'] = float(row['quotient_caf']) if pd.notna(row['quotient_caf']) else None
+
+                person_data['study_level_id'] = study_level_id
+                person_data['area_id'] = area_id
+                person_data['family_situation_id'] = family_situation_id
+
+
+            person = Person(**person_data)
             
             self.session.add(person)
             

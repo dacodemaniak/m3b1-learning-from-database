@@ -25,6 +25,8 @@ class Person(Base):
     mensual_home_rent = Column(Float, nullable=True)  # Maybe null
     credit_amount = Column(Float, nullable=False)
     
+    child_number = Column(Integer, nullable=True)
+    caf_quotient = Column(Float, nullable=True)
     # Foreign keys
     study_level_id = Column(Integer, ForeignKey('study_level.id'), nullable=True)
     area_id = Column(Integer, ForeignKey('area.id'), nullable=True)
